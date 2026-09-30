@@ -1,83 +1,133 @@
 # systemone-dlp-gateway
 
-> A policy-first DLP gateway for AI agents: classify PII, assess egress risk, and triage sensitive transfers using Jev, local decision-model adapters, and deterministic enforcement rules.
+> A model-only research gateway for evaluating Jev-style typed-decision models on DLP and agent-egress tasks.
 
-## Jev DLP decision-gate prototype
+This is a research prototype, **not a production DLP enforcement system**. One selected decision model receives destination, action, redacted evidence, and typed questions; it returns `allow`, `review`, or `block` plus sensitivity, PII type, triage, risk, and a violation probability.
 
-This prototype combines Jev with a local, Apache-2.0 open model (Mistral Small
-3.1 via Ollama) between deterministic DLP detection and an agent's egress tool.
-It does **not** send a complete document to any model: the caller sends minimal,
-redacted evidence and metadata. The gate returns one of `allow`,
-`review`, or `block` and emits an auditable JSON record.
+## Model-only contract
 
-## Architecture
-
-`agent/tool request -> deterministic detectors -> Jev typed judgement -> local policy -> allow | review | block`
-
-Deterministic policy is the authority: secrets are blocked without asking a
-model, and any API error or low-confidence decision becomes `review`.
-
-## Run
-
-Requires Python 3.11+ and no third-party packages.
-
-```powershell
-python benchmark.py
+```text
+agent/tool request -> one selected System One model -> typed decision
 ```
 
-## Test console
+- No deterministic override changes a model verdict.
+- No generic LLM JSON adapter or ensemble is used.
+- Provider errors return unavailable; they never turn into an allow/review/block fallback.
+- Use redacted, minimal evidence only.
 
-The React console keeps keys on the Python service, never in browser JavaScript.
+## Providers
 
-```powershell
-python server.py
-cd frontend
-npm install
-npm run dev
+| Provider | Runtime | Purpose |
+| --- | --- | --- |
+| `jev` | TypeSafe hosted API | Hosted reference baseline; requires `TYPESAFE_API_KEY` |
+| `laya` | Official local Laya server | Purpose-built System One baseline |
+| `tamev` | Local TAMEV Nano | Tiny CPU-oriented decision-model baseline |
+| `ideanjev` | Local Qwen 3.5 4B + adapter | Larger Jev-style candidate, loaded in 4-bit CUDA mode |
+
+Local checkpoints and cloned research source live under `work/`, which is intentionally ignored by Git.
+
+## Results so far
+
+All results use the included frozen synthetic DLP and triage corpora. They are research indicators, not claims about real-world DLP performance.
+
+| Provider | Exact DLP accuracy | Unsafe-allow rate | Block recall | p50 latency |
+| --- | ---: | ---: | ---: | ---: |
+| Laya typed-decisions | 27.6% | 86.7% | 0.0% | 105 ms |
+| TAMEV Nano | 37.9% | 93.3% | 6.7% | 513 ms |
+| IdeaNJEV 4-bit | benchmark running | benchmark running | benchmark running | benchmark running |
+
+Neither completed local baseline is suitable for DLP enforcement without a realistic labelled DLP dataset, held-out testing, and calibration.
+
+## Prerequisites
+
+- Python 3.10+
+- For Laya: a Jev-compatible service on port `8001`
+- For TAMEV: Nano files under `work/models/tamev-nano`
+- For IdeaNJEV: an NVIDIA GPU, `peft`, `bitsandbytes`, Qwen 3.5 4B weights, and the adapter
+
+The CUDA research environment used here is:
+
+```text
+C:\Users\mandi\Documents\Codex\2026-07-30\d\work\jlens-gpu-clean\Scripts\python.exe
 ```
 
-Open the Vite URL (normally `http://localhost:5173`). The provider options are
-the same as the benchmark: rules, Jev, local Ollama/Mistral, and conservative
-Jev-plus-local consensus. For a distributable local console, run `npm run build`
-and use `python server.py` to serve `frontend/dist` at port 8000.
+## Run benchmarks
 
-This runs the included 30-case synthetic, redacted regression corpus with the
-deterministic adapter. To evaluate the actual Jev API, set a key and opt in:
+```powershell
+python benchmark.py --provider jev
+python benchmark.py --provider laya
+python benchmark.py --provider tamev
+python benchmark.py --provider ideanjev
+```
+
+Reports are written to `outputs/benchmark-<provider>.json`, also ignored by Git.
+
+### Jev
 
 ```powershell
 $env:TYPESAFE_API_KEY = "..."
 python benchmark.py --provider jev
 ```
 
-For the local open-model comparison, install Ollama and pull the model (about
-15 GB), then run the local or consensus lane. `DLP_OLLAMA_MODEL` can select a
-different locally installed non-Chinese Ollama model.
+### Laya
+
+Start Laya at `http://127.0.0.1:8001/v1/systemone`, then:
 
 ```powershell
-ollama pull mistral-small3.1
-python benchmark.py --provider ollama
-python benchmark.py --provider ensemble
+$env:LAYA_BASE_URL = "http://127.0.0.1:8001/v1/systemone"
+$env:LAYA_MODEL = "laya-typed-decisions"
+python benchmark.py --provider laya
 ```
 
-`ensemble` uses Jev and local Mistral. Any model disagreement or provider error
-becomes `review`; it never becomes an allow or a block purely from disagreement.
+### TAMEV Nano
 
-The Jev endpoint is `POST https://api.typesafe.ai/v1/systemone`.  The runner
-does not put the key in source code or logs. Results are written to
-`outputs/benchmark-<provider>.json`.
+```powershell
+$env:HF_HOME = "$PWD\work\huggingface-cache"
+$env:HF_HUB_OFFLINE = "1"
+$env:TAMEV_MODEL_DIR = "$PWD\work\models\tamev-nano"
+python benchmark.py --provider tamev
+```
 
-## Benchmark protocol
+### IdeaNJEV 4-bit
 
-Compare `--provider deterministic`, `--provider ollama`, `--provider jev`, and
-`--provider ensemble` on the exact same frozen corpus. Report: unsafe-allow rate (primary), block precision/recall,
-review rate, p50/p95 latency, and input tokens when returned by the API.
-Before production, replace `corpus.jsonl` with a redacted, human-labelled holdout
-set stratified by sensitive type, destination trust, and adversarial phrasing.
+```powershell
+$env:HF_HOME = "$PWD\work\huggingface-cache"
+$env:HF_HUB_OFFLINE = "1"
+$env:IDEANJEV_SOURCE_DIR = "$PWD\work\sources\ideanjev"
+$env:IDEANJEV_BASE_DIR = "$PWD\work\models\qwen3.5-4b"
+$env:IDEANJEV_ADAPTER_DIR = "$PWD\work\models\ideanjev-adapter"
+python benchmark.py --provider ideanjev
+```
 
-## Jev request shape
+The 4-bit path requires:
 
-Each call asks one `choice` question for sensitivity, one `score` for exposure
-risk, and one `noul` question for whether egress violates policy. The local
-gate only blocks a model-labelled restricted transfer when its probability is
-at least 0.90; otherwise it reviews. This threshold is intentionally a starting
-point to calibrate against your own labels.
+```powershell
+python -m pip install peft bitsandbytes
+```
+
+## Demo and verification
+
+```powershell
+python server.py
+python -m unittest -v
+python -m py_compile dlp_gate.py server.py benchmark.py
+```
+
+Open `http://127.0.0.1:8000`. A UI evaluation makes one model inference; every displayed field derives from that same answer.
+
+## Push-ready checklist
+
+```powershell
+git status
+git add README.md .gitignore dlp_gate.py server.py benchmark.py frontend/src/main.jsx test_dlp_gate.py corpus.jsonl triage_corpus.jsonl
+git commit -m "Add Jev-style local model research lanes"
+git branch -M main
+git remote add origin https://github.com/MandilKarki/systemone-dlp-gateway.git
+git push -u origin main
+```
+
+If `origin` already exists, use:
+
+```powershell
+git remote set-url origin https://github.com/MandilKarki/systemone-dlp-gateway.git
+```

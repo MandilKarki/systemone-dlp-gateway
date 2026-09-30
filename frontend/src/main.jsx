@@ -10,7 +10,7 @@ const examples = [
 ];
 
 function App() {
-  const [provider, setProvider] = useState('deterministic');
+  const [provider, setProvider] = useState('jev');
   const [destination, setDestination] = useState('public');
   const [action, setAction] = useState('paste');
   const [evidence, setEvidence] = useState(examples[0][1]);
@@ -32,7 +32,7 @@ function App() {
       <div className="input-card">
         <div className="row title-row"><h2>Transfer under review</h2><span className="status">local test console</span></div>
         <div className="grid">
-          <label>Decision lane<select value={provider} onChange={e=>setProvider(e.target.value)}><option value="deterministic">Rules baseline</option><option value="jev">Jev API</option><option value="ollama">Local Mistral adapter</option><option value="ensemble">Jev + local consensus</option></select></label>
+          <label>Decision lane<select value={provider} onChange={e=>setProvider(e.target.value)}><option value="jev">Jev API</option><option value="laya">Local Laya</option><option value="tamev">Local TAMEV Nano</option><option value="ideanjev">Local IdeaNJEV 4-bit</option></select></label>
           <label>Destination<select value={destination} onChange={e=>setDestination(e.target.value)}><option value="public">Public / external</option><option value="partner">Approved partner</option><option value="internal">Internal</option></select></label>
           <label>Agent action<select value={action} onChange={e=>setAction(e.target.value)}><option value="paste">Paste to tool</option><option value="upload">Upload file</option><option value="send">Send message</option></select></label>
         </div>
@@ -49,7 +49,7 @@ function App() {
           <div className="reason"><b>Policy note</b><p>{result.reason}</p></div></>}
       </aside>
     </section>
-    <footer><span>Hard secrets are blocked by deterministic policy.</span><span>Provider disagreement fails closed to review.</span></footer>
+    <footer><span>One selected typed-decision model per evaluation.</span><span>Jev and Laya results are benchmarked separately.</span></footer>
   </main>
 }
 createRoot(document.getElementById('root')).render(<App/>);

@@ -1,17 +1,16 @@
 from __future__ import annotations
 import argparse, json, statistics, time
 from pathlib import Path
-from dlp_gate import classify_and_triage, decide, deterministic_provider, ensemble_provider, jev_provider, ollama_provider
+from dlp_gate import classify_and_triage, decide, ideanjev_provider, jev_provider, laya_provider, tamev_provider
 
 def percentile(xs, p):
     return sorted(xs)[min(len(xs)-1, round((len(xs)-1)*p))]
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--provider", choices=("deterministic", "jev", "ollama", "ensemble"), default="deterministic")
+    parser.add_argument("--provider", choices=("jev", "laya", "tamev", "ideanjev"), required=True)
     args = parser.parse_args()
-    provider = {"deterministic":deterministic_provider, "jev":jev_provider,
-                "ollama":ollama_provider, "ensemble":ensemble_provider}[args.provider]
+    provider = {"jev":jev_provider, "laya":laya_provider, "tamev":tamev_provider, "ideanjev":ideanjev_provider}[args.provider]
     rows, latencies = [], []
     for line in Path("corpus.jsonl").read_text().splitlines():
         case = json.loads(line); start = time.perf_counter()

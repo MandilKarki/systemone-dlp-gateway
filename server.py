@@ -4,10 +4,9 @@ import json
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
-from dlp_gate import classify_and_triage, decide, deterministic_provider, ensemble_provider, jev_provider, ollama_provider
+from dlp_gate import evaluate, ideanjev_provider, jev_provider, laya_provider, tamev_provider
 
-PROVIDERS = {"deterministic": deterministic_provider, "jev": jev_provider,
-             "ollama": ollama_provider, "ensemble": ensemble_provider}
+PROVIDERS = {"jev": jev_provider, "laya": laya_provider, "tamev": tamev_provider, "ideanjev": ideanjev_provider}
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -28,12 +27,13 @@ class Handler(SimpleHTTPRequestHandler):
             size = int(self.headers.get("Content-Length", "0"))
             if not 0 < size <= 100_000: raise ValueError("request must be 1–100,000 bytes")
             payload = json.loads(self.rfile.read(size))
-            provider = PROVIDERS[payload.get("provider", "deterministic")]
+            provider = PROVIDERS[payload["provider"]]
             evidence = str(payload["evidence"])
             destination = payload.get("destination", "public")
             action = payload.get("action", "paste")
-            dlp = decide(destination, action, evidence, provider)
-            triage = classify_and_triage(evidence, provider)
+            # One System One call answers the full typed schema.  Calling the
+            # model twice could surface inconsistent verdict and triage labels.
+            dlp, triage = evaluate(destination, action, evidence, provider)
             result = {"verdict":dlp.verdict, "sensitivity":dlp.sensitivity,
                       "probability":dlp.probability, "reason":dlp.reason, "triage":triage}
             body = json.dumps(result).encode()
