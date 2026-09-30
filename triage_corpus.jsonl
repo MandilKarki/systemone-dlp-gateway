@@ -1,0 +1,10 @@
+{"id":"t1","evidence":"Published blog post.","pii_type":"none","triage":"allow"}
+{"id":"t2","evidence":"Customer email <EMAIL> requests deletion.","pii_type":"email","triage":"privacy_review"}
+{"id":"t3","evidence":"Call customer at <PHONE>.","pii_type":"phone","triage":"privacy_review"}
+{"id":"t4","evidence":"Ship replacement to <ADDRESS>.","pii_type":"address","triage":"privacy_review"}
+{"id":"t5","evidence":"Tax form includes <SSN>.","pii_type":"ssn","triage":"privacy_review"}
+{"id":"t6","evidence":"Leaked deployment token <TOKEN>.","pii_type":"none","triage":"security_incident"}
+{"id":"t7","evidence":"AWS credential <AWS_KEY> found in issue.","pii_type":"none","triage":"security_incident"}
+{"id":"t8","evidence":"Patient diagnosis needs review.","pii_type":"none","triage":"privacy_review"}
+{"id":"t9","evidence":"Draft earnings model attached.","pii_type":"none","triage":"business_review"}
+{"id":"t10","evidence":"Proprietary source code was pasted.","pii_type":"none","triage":"business_review"}
