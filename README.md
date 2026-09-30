@@ -34,7 +34,7 @@ All results use the included frozen synthetic DLP and triage corpora. They are r
 | --- | ---: | ---: | ---: | ---: |
 | Laya typed-decisions | 27.6% | 86.7% | 0.0% | 105 ms |
 | TAMEV Nano | 37.9% | 93.3% | 6.7% | 513 ms |
-| IdeaNJEV 4-bit | benchmark running | benchmark running | benchmark running | benchmark running |
+| IdeaNJEV 4-bit | 48.3% | 0.0% | 53.3% | 2,264 ms |
 
 Neither completed local baseline is suitable for DLP enforcement without a realistic labelled DLP dataset, held-out testing, and calibration.
 
